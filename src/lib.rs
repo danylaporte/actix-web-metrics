@@ -55,7 +55,7 @@ where
 
         MetricsResponse {
             f,
-            state: ResponseState::NotStarted { route },
+            state: ResponseStateGuard(ResponseState::NotStarted { route }),
         }
     }
 }
@@ -70,10 +70,10 @@ impl ResponseState {
     fn complete(&mut self) {
         *self = match replace(self, Self::Completed) {
             Self::Started { instant, route } => {
-                counter!("reqwest_time_ms", "route" => route.clone())
+                counter!("req_time_ms", "route" => route.clone())
                     .increment(instant.elapsed().as_millis() as u64);
 
-                counter!("reqwest_count", "route" => route.clone()).increment(1);
+                counter!("req_count", "route" => route.clone()).increment(1);
 
                 Self::Started {
                     instant: Instant::now(),
@@ -87,7 +87,7 @@ impl ResponseState {
     fn start(&mut self) {
         *self = match replace(self, Self::Completed) {
             Self::NotStarted { route } => {
-                counter!("reqwest_started", "route" => route.clone()).increment(1);
+                counter!("req_started", "route" => route.clone()).increment(1);
 
                 Self::Started {
                     instant: Instant::now(),
@@ -112,7 +112,7 @@ impl Drop for ResponseStateGuard {
 pub struct MetricsResponse<F> {
     #[pin]
     f: F,
-    state: ResponseState,
+    state: ResponseStateGuard,
 }
 
 impl<F, B> Future for MetricsResponse<F>
@@ -125,12 +125,12 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
-        this.state.start();
+        this.state.0.start();
 
         match this.f.poll(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(v) => {
-                this.state.complete();
+                this.state.0.complete();
 
                 Poll::Ready(v)
             }
