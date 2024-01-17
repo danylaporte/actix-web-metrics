@@ -75,10 +75,7 @@ impl ResponseState {
 
                 counter!("req_count", "route" => route.clone()).increment(1);
 
-                Self::Started {
-                    instant: Instant::now(),
-                    route,
-                }
+                Self::Completed
             }
             state => state,
         };
