@@ -50,12 +50,12 @@ where
     actix_web::dev::forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let route = req.path().to_string();
+        let state = ResponseStateGuard::new(&req);
         let f = self.service.call(req);
 
         MetricsResponse {
             f,
-            state: ResponseStateGuard(ResponseState::NotStarted { route }),
+            state,
         }
     }
 }
@@ -97,6 +97,12 @@ impl ResponseState {
 }
 
 struct ResponseStateGuard(ResponseState);
+
+impl ResponseStateGuard {
+    fn new(req: &ServiceRequest) -> Self {
+        Self(ResponseState::NotStarted { route: req.path().to_owned() })
+    }
+}
 
 impl Drop for ResponseStateGuard {
     fn drop(&mut self) {
