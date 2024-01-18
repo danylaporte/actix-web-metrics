@@ -67,6 +67,7 @@ enum ResponseState {
 }
 
 impl ResponseState {
+    #[inline(never)]
     fn complete(&mut self) {
         *self = match replace(self, Self::Completed) {
             Self::Started { instant, route } => {
@@ -81,6 +82,7 @@ impl ResponseState {
         };
     }
 
+    #[inline(never)]
     fn start(&mut self) {
         *self = match replace(self, Self::Completed) {
             Self::NotStarted { route } => {
@@ -99,6 +101,7 @@ impl ResponseState {
 struct ResponseStateGuard(ResponseState);
 
 impl ResponseStateGuard {
+    #[inline(never)]
     fn new(req: &ServiceRequest) -> Self {
         Self(ResponseState::NotStarted { route: req.path().to_owned() })
     }
@@ -115,6 +118,7 @@ impl Drop for ResponseStateGuard {
 pub struct MetricsResponse<F> {
     #[pin]
     f: F,
+    
     state: ResponseStateGuard,
 }
 
